@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+
+<mapper namespace="com.upupzhu.mapper.UpFindMapper">
+
+    <resultMap id="videoMap" type="com.upupzhu.pojo.Video">
+        <id column="videoId" property="videoId"/>
+        <result column="videoUrl" property="videoUrl"/>
+        <result column="videoTitle" property="videoTitle"/>
+        <result column="videoBlurb" property="videoBlurb"/>
+        <result column="videoCover" property="videoCover"/>
+        <result column="videoDuration" property="videoDuration"/>
+        <result column="promulgateTime" property="promulgateTime"/>
+        <result column="frequency" property="frequency"/>
+        <result column="subentryId" property="subentryId"/>
+        <result column="userId" property="userId"/>
+        <collection property="user" column="userId" ofType="userMap" select="user"/>
+        <collection property="videoUps" javaType="ArrayList" column="videoId" ofType="videoUpMap" select="videoUps"/>
+        <collection property="commentss" javaType="ArrayList" column="videoId" ofType="commentsMap" select="commentss"/>
+    </resultMap>
+    <!-- 单个视频 -->
+    <select id="likeVideo" parameterType="java.lang.Integer" resultMap="videoMap">
+        SELECT video.*
+        FROM video_up INNER JOIN video
+        ON video_up.`videoId`=video.`videoId` AND video_up.userId = #{userId}
+        ORDER BY video_up.`videoupId`
+        LIMIT #{page},#{quantity}
+    </select>
+
+    <resultMap id="userMap" type="com.upupzhu.pojo.User">
+        <id column="userId" property="userId"/>
+        <result column="userName" property="userName"/>
+        <result column="userGender" property="userGender"/>
+        <result column="userAge" property="userAge"/>
+        <result column="userPic" property="userPic"/>
+        <result column="userSignature" property="userSignature"/>
+        <result column="swanId" property="swanId"/>
+        <result column="nickName" property="nickName"/>
+    </resultMap><!-- 用户信息 -->
+    <select id="user" resultMap="userMap">
+      SELECT *
+      FROM user
+      WHERE userId=#{userId}
+    </select>
+
+    <resultMap id="videoUpMap" type="com.upupzhu.pojo.VideoUp">
+        <id column="videoupId" property="videoupId"/>
+        <result column="videoId" property="videoId"/>
+        <result column="userId" property="userId"/>
+    </resultMap><!-- 点赞详情 -->
+    <select id="videoUps" resultMap="videoUpMap">
+      SELECT *
+      FROM video_up
+      WHERE videoId=#{videoId}
+    </select>
+    <resultMap id="commentsMap" type="com.upupzhu.pojo.Comments">
+        <id column="commentsId" property="commentsId"/>
+        <result column="commentsText" property="commentsText"/>
+        <result column="commentsTime" property="commentsTime"/>
+        <result column="videoId" property="videoId"/>
+        <result column="userId" property="userId"/>
+        <collection property="user" column="userId" ofType="userMap" select="user"/>
+    </resultMap><!-- 评论详情 -->
+    <select id="commentss" resultMap="commentsMap">
+      SELECT *
+      FROM comments
+      WHERE videoId=#{videoId}
+    </select>
+
+</mapper>

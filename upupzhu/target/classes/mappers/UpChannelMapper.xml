@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+
+<mapper namespace="com.upupzhu.mapper.UpChannelMapper">
+
+    <resultMap id="videoMap" type="com.upupzhu.pojo.SO.SVideo">
+        <id column="videoId" property="videoId"/>
+        <result column="videoTitle" property="videoTitle"/>
+        <result column="videoBlurb" property="videoBlurb"/>
+        <result column="videoCover" property="videoCover"/>
+        <result column="videoDuration" property="videoDuration"/>
+    </resultMap>
+    <!-- 频道热门视频 -->
+    <select id="videos" resultMap="videoMap">
+        SELECT videoId,videoTitle,videoBlurb,videoCover,videoDuration
+        FROM video
+        WHERE subentryId =#{subentryId}
+        ORDER BY frequency DESC
+        LIMIT 0,4
+    </select>
+    <!-- 分类置顶视频 -->
+    <select id="recommendClassVideoList" parameterType="java.lang.Integer" resultMap="videoMap">
+        SELECT v.* FROM
+        (SELECT s.subentryId FROM video_class AS c
+        INNER JOIN video_class_subentry AS s
+        ON c.classId = s.classId AND c.classId = #{classId} ) AS b
+        INNER JOIN video AS v
+        ON b.subentryId = v.subentryId AND v.classTopping BETWEEN 1 AND 4
+        ORDER BY v.classTopping DESC
+        LIMIT 0,4
+    </select>
+    <!-- 分类置顶视频不足时 补充热门视频 -->
+    <select id="supplementClassVideoList" parameterType="java.lang.Integer" resultMap="videoMap">
+        SELECT v.* FROM
+        (SELECT s.subentryId  FROM video_class AS c
+        INNER JOIN video_class_subentry AS s
+        ON c.classId = s.classId AND c.classId = #{classId}) AS b
+        INNER JOIN video AS v
+        ON b.subentryId = v.subentryId AND v.`classTopping`=0
+        ORDER BY v.`frequency` DESC
+        LIMIT 0,#{quantity}
+    </select>
+
+
+    <resultMap id="videoClassSubentryMap" type="com.upupzhu.pojo.SO.Subentry">
+        <id column="subentryId" property="subentryId"/>
+        <result column="subentryName" property="subentryName"/>
+        <collection column="subentryId" property="videos" javaType="ArrayList" ofType="videoMap" select="videos"/>
+    </resultMap>
+    <!-- 所有频道 -->
+    <select id="videoClassSubentrys" resultMap="videoClassSubentryMap">
+      SELECT `subentryId`, `subentryName`
+      FROM video_class_subentry
+      WHERE classId = #{classId}
+      ORDER BY subentryRanking DESC
+    </select>
+
+
+    <resultMap id="videoClassMap" type="com.upupzhu.pojo.SO.SClass">
+        <id column="classId" property="classId"/>
+        <result column="className" property="className"/>
+        <collection column="classId" property="subentrys" javaType="ArrayList" ofType="videoClassSubentryMap" select="videoClassSubentrys"/>
+    </resultMap>
+    <!-- 所有分类 -->
+    <select id="videoClassList" resultMap="videoClassMap">
+        SELECT classId,className
+        FROM video_class
+        WHERE classSwitch>0 AND classRanking>0
+        ORDER BY classRanking DESC
+    </select>
+
+
+
+
+    <!-- 单个分类 -->
+    <select id="singleVideoClass" resultMap="videoClassMap">
+        SELECT *
+        FROM video_class
+        WHERE classRanking>0 AND classId = #{classId}
+    </select>
+
+
+</mapper>

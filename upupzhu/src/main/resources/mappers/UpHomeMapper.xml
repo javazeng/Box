@@ -1,0 +1,194 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+
+<mapper namespace="com.upupzhu.mapper.UpHomeMapper">
+
+    <!-- 添加播放量 -->
+    <update id="udtFrequency" parameterType="java.lang.Integer">
+        UPDATE  `upupzhu`.`video`
+        SET `frequency` = frequency+1
+        WHERE `videoId` = #{videoId} ;
+    </update>
+
+    <!-- 违禁词 -->
+    <select id="forbiddenWord" resultType="java.lang.String">
+      SELECT GROUP_CONCAT(`language` SEPARATOR  '|') AS forbiddenWord
+      FROM forbidden_word
+    </select>
+
+    <!-- 添加评论 -->
+    <insert id="addComments" parameterType="com.upupzhu.pojo.Comments">
+        INSERT INTO `upupzhu`.`comments` (
+          `commentsText`,
+          `commentsTime`,
+          `videoId`,
+          `userId`
+        )
+        VALUES
+          (
+            #{commentsText},
+            #{commentsTime},
+            #{videoId},
+            #{userId}
+          ) ;
+    </insert>
+
+    <!-- 点赞 -->
+    <insert id="addVideoUp" parameterType="com.upupzhu.pojo.VideoUp">
+        INSERT INTO `upupzhu`.`video_up` ( `videoId`, `userId`)
+        VALUES (#{videoId}, #{userId});
+    </insert>
+
+    <!-- 取消点赞 -->
+    <delete id="dltVideoUp" parameterType="com.upupzhu.pojo.VideoUp">
+        DELETE FROM `upupzhu`.`video_up`
+        WHERE `videoId` = #{videoId} AND `userId` = #{userId};
+    </delete>
+
+    <!-- 点赞数 -->
+    <select id="VideoUps" resultType="java.lang.Integer">
+        SELECT COUNT(*)
+        FROM `upupzhu`.`video_up`
+        WHERE `videoId` = #{videoId}
+    </select>
+
+    <resultMap id="userMap" type="com.upupzhu.pojo.User">
+        <id column="userId" property="userId"/>
+        <result column="userName" property="userName"/>
+        <result column="userGender" property="userGender"/>
+        <result column="userAge" property="userAge"/>
+        <result column="userPic" property="userPic"/>
+        <result column="userSignature" property="userSignature"/>
+        <result column="swanId" property="swanId"/>
+        <result column="nickName" property="nickName"/>
+    </resultMap><!-- 用户信息 -->
+    <select id="user" resultMap="userMap">
+      SELECT *
+      FROM user
+      WHERE userId=#{userId}
+    </select>
+
+
+    <resultMap id="videoMap" type="com.upupzhu.pojo.Video">
+        <id column="videoId" property="videoId"/>
+        <result column="videoUrl" property="videoUrl"/>
+        <result column="videoTitle" property="videoTitle"/>
+        <result column="videoBlurb" property="videoBlurb"/>
+        <result column="videoCover" property="videoCover"/>
+        <result column="videoDuration" property="videoDuration"/>
+        <result column="promulgateTime" property="promulgateTime"/>
+        <result column="frequency" property="frequency"/>
+        <result column="subentryId" property="subentryId"/>
+        <result column="userId" property="userId"/>
+        <collection property="user" column="userId" ofType="userMap" select="user"/>
+        <collection property="videoUps" javaType="ArrayList" column="videoId" ofType="videoUpMap" select="videoUps"/>
+        <collection property="commentss" javaType="ArrayList" column="videoId" ofType="commentsMap" select="commentss"/>
+    </resultMap>
+    <resultMap id="videoMap2" type="com.upupzhu.pojo.SO.SVideo">
+        <id column="videoId" property="videoId"/>
+        <result column="videoTitle" property="videoTitle"/>
+        <result column="videoBlurb" property="videoBlurb"/>
+        <result column="videoCover" property="videoCover"/>
+        <result column="videoDuration" property="videoDuration"/>
+    </resultMap>
+    <!-- 单个视频 -->
+    <select id="singleVideo" parameterType="java.lang.Integer" resultMap="videoMap">
+        SELECT * FROM video
+        WHERE videoId =#{videoId}
+    </select>
+    <!-- 首页置顶视频 -->
+    <select id="recommendhomeVideo" resultMap="videoMap2">
+        SELECT  videoId,videoTitle,videoBlurb,videoCover,videoDuration
+        FROM video
+        WHERE homeTopping!=0
+        ORDER BY homeTopping
+    </select>
+    <!-- 首页补充视频 -->
+    <select id="supplementhomeVideo" resultMap="videoMap2">
+        SELECT  videoId,videoTitle,videoBlurb,videoCover,videoDuration
+        FROM video
+        WHERE homeTopping=0
+        ORDER BY frequency
+        LIMIT 0,#{quantity}
+    </select>
+    <!-- 分类置顶视频 -->
+    <select id="recommendClassVideoList" parameterType="java.lang.Integer" resultMap="videoMap2">
+        SELECT v. videoId,videoTitle,videoBlurb,videoCover,videoDuration
+        FROM (SELECT s.subentryId FROM video_class AS c
+        INNER JOIN video_class_subentry AS s
+        ON c.classId = s.classId AND c.classId = #{classId} GROUP BY c.classId) AS b
+        INNER JOIN video AS v
+        ON b.subentryId = v.subentryId AND v.classTopping BETWEEN 1 AND 4
+        ORDER BY v.classTopping DESC
+        LIMIT 0,4
+    </select>
+    <!-- 分类置顶视频不足时 补充热门视频 -->
+    <select id="supplementClassVideoList" parameterType="java.lang.Integer" resultMap="videoMap2">
+        SELECT v. videoId,videoTitle,videoBlurb,videoCover,videoDuration
+        FROM (SELECT s.subentryId  FROM video_class AS c
+        INNER JOIN video_class_subentry AS s
+        ON c.classId = s.classId AND c.classId = #{classId} GROUP BY c.classId) AS b
+        INNER JOIN video AS v
+        ON b.subentryId = v.subentryId AND v.`classTopping`=0
+        ORDER BY v.`frequency` DESC
+        LIMIT 0,#{quantity}
+    </select>
+
+
+
+
+    <resultMap id="videoUpMap" type="com.upupzhu.pojo.VideoUp">
+        <id column="videoupId" property="videoupId"/>
+        <result column="videoId" property="videoId"/>
+        <result column="userId" property="userId"/>
+    </resultMap><!-- 点赞详情 -->
+    <select id="videoUps" resultMap="videoUpMap">
+      SELECT *
+      FROM video_up
+      WHERE videoId=#{videoId}
+    </select>
+    <resultMap id="commentsMap" type="com.upupzhu.pojo.Comments">
+        <id column="commentsId" property="commentsId"/>
+        <result column="commentsText" property="commentsText"/>
+        <result column="commentsTime" property="commentsTime"/>
+        <result column="videoId" property="videoId"/>
+        <result column="userId" property="userId"/>
+        <collection property="user" column="userId" ofType="userMap" select="user"/>
+    </resultMap><!-- 评论详情 -->
+    <select id="commentss" resultMap="commentsMap">
+      SELECT *
+      FROM comments
+      WHERE videoId=#{videoId}
+    </select>
+
+
+
+    <resultMap id="videoClassMap" type="com.upupzhu.pojo.VideoClass">
+        <id column="classId" property="classId"/>
+        <result column="className" property="className"/>
+        <result column="classRanking" property="classRanking"/>
+        <result column="classSwitch" property="classSwitch"/>
+    </resultMap>
+    <!-- 置顶分类 -->
+    <select id="recommendVideoClassList" resultMap="videoClassMap">
+        SELECT *
+        FROM video_class
+        WHERE classSwitch>0 AND classRanking>0
+        ORDER BY classRanking DESC
+        LIMIT #{page},#{quantity}
+    </select>
+    <!-- 置顶分类不足时 补充热门分类 -->
+    <select id="supplementVideoClassList" resultMap="videoClassMap">
+        SELECT c.*
+        FROM video_class AS c
+        INNER JOIN
+        (SELECT s.classId,SUM(v.frequency) AS frequency FROM video_class_subentry AS s
+        INNER JOIN video AS v ON v.subentryId = s.subentryId
+        GROUP BY s.classId ORDER BY SUM(v.frequency) DESC ) AS b
+        ON b.classId = c.classId AND c.classRanking=0
+        GROUP BY b.frequency DESC
+        LIMIT #{page},#{quantity}
+    </select>
+
+
+</mapper>
